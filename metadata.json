@@ -1,0 +1,5 @@
+{
+  "name": "The Chroma Weaver",
+  "description": "An AI-powered tool that seamlessly blends a model into a new scene. Upload a foreground model image and a background room image, and The Chroma Weaver will fuse them into a single, cohesive, high-fashion editorial shot, matching lighting, color palettes, and textures.",
+  "requestFramePermissions": []
+}
