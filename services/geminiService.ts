@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Modality } from "@google/genai";
 import type { ImageData } from '../types';
 
@@ -37,18 +38,13 @@ async function generateImage(parts: any[]): Promise<string> {
 
 
 // Mode 1: FUSE with Unified Camera Perspective
-const fusePrompt = `Act as a professional photo compositor and retoucher. Your task is to create a single, photorealistic, and unified image by perfectly integrating the person from the 'Foreground Image' into the 'Background Image'. The final result must not look like a composite or collage.
+const fusePrompt = `As a High-Fashion AI Designer and Photographer, generate a new, unique high-fashion model and seamlessly integrate them into the 'Background Image (Room)'.
 
-**Primary Directive: Unified Camera Perspective.**
-
-1.  **Analyze the Background:** First, analyze the 'Background Image' to determine its camera perspective, including the vanishing point, camera height, and lens angle.
-2.  **Reproject the Foreground:** Do not simply paste the model. Instead, re-render the person from the 'Foreground Image' as if they were captured by the *exact same camera* at the *exact same moment* as the background.
-3.  **Scale & Perspective Correction:** The model's scale and perspective must be perfectly aligned with the room's geometry. If the model is placed on the floor, their feet must align with the floor plane and their size must be proportional to the furniture.
-4.  **Unified Lighting & Shadows:** Analyze the direction, color, and softness of the light sources in the 'Background Image'. Re-light the model to match this environment precisely. The model must cast soft, realistic shadows onto the floor and surrounding objects, consistent with the scene's lighting.
-5.  **Color & Style Integration:** While maintaining the model's core fashion style, subtly shift the colors of their outfit to harmonize with the room's color palette. The goal is stylistic cohesion, not a complete color replacement.
-6.  **Maintain Pose:** Preserve the original pose of the model as closely as possible while ensuring it fits naturally within the scene.
-
-The final output should be a single, flawless photograph that looks like it was taken in one shot.`;
+1.  **New Model:** Create a distinct model; do not replicate the 'Model Style Donor (Vibe)' individual.
+2.  **Harmonized Style:** Extract the fashion aesthetic from the 'Model Style Donor' (clothing, fabrics, hair, vibe). Adapt and harmonize this style with the 'Background Image's' theme, color palette, and atmosphere, creating a cohesive new outfit and look.
+3.  **Dynamic Pose:** Place the new model in a fresh, elegant pose that interacts naturally with the 'Background Image'.
+4.  **Photorealistic Integration:** Ensure perfect matching of scale, perspective, lighting, and shadows with the 'Background Image' for a single, high-quality editorial shot.
+5.  **Unique Output:** Strive for a unique vibe, theme, and distinct visual outcome with each generation, avoiding repetition.`;
 
 
 export async function fuseImages(foreground: ImageData, background: ImageData): Promise<string> {
@@ -60,7 +56,15 @@ export async function fuseImages(foreground: ImageData, background: ImageData): 
 }
 
 // Mode 2: EXTEND SCENE
-const extendPrompt = `Act as a Cinematic Architectural Designer. Analyze the uploaded image, designated as the 'Vibe Donor'. Specifically extract its key aesthetic components: the soft pink/peach wall color, the striped rainbow light reflections, the glossy marble floor texture, and the neon-accented archways. Now, generate a completely new interior scene (a 'New View') that appears to be located just through the central archway or hallway of the Vibe Donor room. The New View must maintain the exact color palette, light quality, and visual temperature of the Vibe Donor image, ensuring perfect architectural continuity and style consistency.`;
+const extendPrompt = `As an Interior Architect and Conceptual Designer, analyze the 'Vibe Donor' image to extract its key aesthetics: soft pink/peach walls, striped rainbow light, glossy marble floor, and neon archways.
+
+Generate a **completely new interior scene** from a **radically different camera angle/point of view**. The new scene must feature:
+
+1.  **Unique Architecture:** Design new, distinct interior corners and architectural elements; do not replicate the 'Vibe Donor's' layout.
+2.  **Novel Elements:** Introduce new, thematically consistent props, furniture, and design elements that align with the 'Vibe Donor's' high-fashion aesthetic.
+3.  **Vibe Continuity:** Incorporate the 'Vibe Donor's' extracted elements (wall color, light reflections, floor texture, archways) seamlessly to create a consistent, sophisticated, yet fresh scene.
+
+The final output should be a captivating, high-fashion architectural render.`;
 
 export async function extendScene(source: ImageData): Promise<string> {
     const sourcePart = { inlineData: { data: source.base64.split(',')[1], mimeType: source.mimeType } };
@@ -69,7 +73,15 @@ export async function extendScene(source: ImageData): Promise<string> {
 }
 
 // Mode 3: REMIX STYLE
-const remixPrompt = `Act as a High-Fashion Stylist and Visual Mixer. Your goal is to generate a new image of a model placed seamlessly into the 'Target Scene' background. The model must be entirely new, but their appearance (outfit, hair buns, and accessory style) must be generated by analyzing the attached 'Style Donor' image. The new model should be in a casual, relaxed pose (e.g., sitting on the floor or reclining on the sofa). Crucially: The model's elaborate, embroidered, and beaded clothing style must be retained, but their color palette must be remixed to exclusively match the primary colors of the rainbow yarn couch in the Target Scene.`;
+const remixPrompt = `As a High-Fashion Stylist and AI Visual Mixer, generate a *new and unique* image featuring an *entirely distinct model* within the 'Target Scene' background. Avoid direct copies of the 'Style Donor'.
+
+1.  **New Model:** Create a brand new model; do not replicate the 'Style Donor' individual.
+2.  **Style Inspiration:** Analyze 'Style Donor' for distinctive fashion elements (outfit design, hair, accessories). Use this as *inspiration* to design a **new, high-fashion outfit and look** for the generated model, evoking the 'Style Donor's' spirit and complexity (e.g., elaborate details) but as a fresh interpretation.
+3.  **New Pose & Integration:** Place the unique model in a casual, natural pose within the 'Target Scene'. Ensure perfect integration of scale, lighting, and shadows, as if originally photographed there.
+4.  **Dynamic Color Remix:** Dynamically remix the generated model's clothing and accessory colors to *exclusively match the primary, vibrant colors* of the 'Target Scene's' rainbow yarn couch. Ensure a natural, high-fashion color transformation.
+5.  **Visual Uniqueness:** Strive for novel compositions and distinct visual outcomes in each generation, avoiding repetitive imagery.
+
+The final output must be a single, cohesive high-fashion editorial image, merging new creativity with guided inspiration.`;
 
 export async function remixStyle(styleDonor: ImageData, targetScene: ImageData): Promise<string> {
     const styleDonorPart = { inlineData: { data: styleDonor.base64.split(',')[1], mimeType: styleDonor.mimeType } };

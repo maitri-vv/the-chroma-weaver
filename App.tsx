@@ -6,13 +6,15 @@ import LoadingIndicator from './components/LoadingIndicator';
 import { fuseImages, extendScene, remixStyle } from './services/geminiService';
 import { fileToBase64 } from './utils/fileUtils';
 import type { ImageData, WeaveMode } from './types';
+import { UndoIcon } from './components/icons/UndoIcon';
+import { RedoIcon } from './components/icons/RedoIcon';
 
 const ModeSelector: React.FC<{
   currentMode: WeaveMode;
   onModeChange: (mode: WeaveMode) => void;
 }> = ({ currentMode, onModeChange }) => {
   const modes: { id: WeaveMode; label: string; description: string }[] = [
-    { id: 'FUSE', label: 'Fuse Model into Scene', description: 'Blend an existing model seamlessly into a new background scene.' },
+    { id: 'FUSE', label: 'Fuse Model into Scene', description: 'Generate a unique model, inspired by a style donor, and seamlessly blend them into a new background scene with harmonized styling.' },
     { id: 'EXTEND', label: 'Extend Scene View', description: 'Generate a new view from an existing scene, maintaining its style.' },
     { id: 'REMIX', label: 'Remix Model Style', description: 'Create a new model using a style donor, and place it in a target scene.' },
   ];
@@ -42,11 +44,24 @@ const ModeSelector: React.FC<{
   );
 };
 
+interface History {
+  past: string[];
+  present: string;
+  future: string[];
+}
+
+const initialHistory: History = {
+  past: [],
+  present: '',
+  future: [],
+};
+
+
 const App: React.FC = () => {
   const [mode, setMode] = useState<WeaveMode>('FUSE');
   const [image1, setImage1] = useState<ImageData | null>(null);
   const [image2, setImage2] = useState<ImageData | null>(null);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [history, setHistory] = useState<History>(initialHistory);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +69,7 @@ const App: React.FC = () => {
     setMode(newMode);
     setImage1(null);
     setImage2(null);
-    setGeneratedImage(null);
+    setHistory(initialHistory);
     setError(null);
   };
 
@@ -62,6 +77,7 @@ const App: React.FC = () => {
     try {
       const { base64, mimeType } = await fileToBase64(file);
       setImage1({ base64, mimeType });
+      setHistory(initialHistory);
       setError(null);
     } catch (err) {
       setError('Failed to read the first image.');
@@ -72,6 +88,7 @@ const App: React.FC = () => {
     try {
       const { base64, mimeType } = await fileToBase64(file);
       setImage2({ base64, mimeType });
+      setHistory(initialHistory);
       setError(null);
     } catch (err) {
       setError('Failed to read the second image.');
@@ -81,14 +98,13 @@ const App: React.FC = () => {
   const handleGenerate = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    setGeneratedImage(null);
-
+    
     try {
       let result: string | null = null;
       switch (mode) {
         case 'FUSE':
           if (!image1 || !image2) {
-            throw new Error('Please upload both a Foreground and a Background image.');
+            throw new Error('Please upload both a Model Style Donor and a Background image.');
           }
           result = await fuseImages(image1, image2);
           break;
@@ -107,7 +123,17 @@ const App: React.FC = () => {
         default:
           throw new Error('Invalid mode selected.');
       }
-      setGeneratedImage(`data:image/jpeg;base64,${result}`);
+      
+      const newImage = `data:image/jpeg;base64,${result}`;
+      setHistory(current => {
+        const newPast = [...current.past, current.present];
+        return {
+            past: newPast,
+            present: newImage,
+            future: [],
+        };
+      });
+
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : 'An unknown error occurred during generation.');
@@ -116,12 +142,32 @@ const App: React.FC = () => {
     }
   }, [mode, image1, image2]);
 
+  const handleUndo = useCallback(() => {
+    setHistory(current => {
+      if (current.past.length === 0) return current;
+      const newFuture = [current.present, ...current.future];
+      const newPresent = current.past[current.past.length - 1];
+      const newPast = current.past.slice(0, current.past.length - 1);
+      return { past: newPast, present: newPresent, future: newFuture };
+    });
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    setHistory(current => {
+      if (current.future.length === 0) return current;
+      const newPast = [...current.past, current.present];
+      const newPresent = current.future[0];
+      const newFuture = current.future.slice(1);
+      return { past: newPast, present: newPresent, future: newFuture };
+    });
+  }, []);
+
   const getUploaderConfig = () => {
       switch (mode) {
           case 'FUSE':
               return {
                   showUploader1: true,
-                  uploader1Title: "Foreground Image (Model)",
+                  uploader1Title: "Model Style Donor (Vibe)",
                   showUploader2: true,
                   uploader2Title: "Background Image (Room)",
                   buttonText: "Fuse Style",
@@ -150,6 +196,8 @@ const App: React.FC = () => {
 
   const config = getUploaderConfig();
   const gridLayoutClass = mode === 'EXTEND' ? 'lg:grid-cols-2' : 'lg:grid-cols-3';
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans p-4 sm:p-6 md:p-8">
@@ -173,16 +221,36 @@ const App: React.FC = () => {
                   imagePreview={image2?.base64}
                 />
             )}
-            <ResultDisplay generatedImage={generatedImage} />
+            <ResultDisplay generatedImage={history.present} />
           </div>
           <div className="mt-8 text-center">
-            <button
-              onClick={handleGenerate}
-              disabled={config.isButtonDisabled}
-              className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white font-bold py-4 px-8 rounded-full text-lg transition-all duration-300 ease-in-out shadow-lg shadow-purple-900/50 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-400"
-            >
-              {isLoading ? 'Weaving...' : config.buttonText}
-            </button>
+            <div className="flex justify-center items-center gap-4">
+              <button
+                onClick={handleUndo}
+                disabled={!canUndo || isLoading}
+                className="p-3 rounded-full bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-purple-500"
+                aria-label="Undo last generation"
+                title="Undo"
+              >
+                <UndoIcon className="w-6 h-6" />
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={config.isButtonDisabled}
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white font-bold py-4 px-8 rounded-full text-lg transition-all duration-300 ease-in-out shadow-lg shadow-purple-900/50 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-400"
+              >
+                {isLoading ? 'Weaving...' : config.buttonText}
+              </button>
+              <button
+                onClick={handleRedo}
+                disabled={!canRedo || isLoading}
+                className="p-3 rounded-full bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-purple-500"
+                aria-label="Redo generation"
+                title="Redo"
+              >
+                <RedoIcon className="w-6 h-6" />
+              </button>
+            </div>
             {error && <p className="text-red-400 mt-4">{error}</p>}
           </div>
         </main>
