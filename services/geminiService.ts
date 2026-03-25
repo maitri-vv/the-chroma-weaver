@@ -1,80 +1,108 @@
-import { GoogleGenAI, Modality } from "@google/genai";
+/// <reference types="vite/client" />
+import { GoogleGenAI } from "@google/genai";
 import type { ImageData } from '../types';
 
-// Helper to initialize AI and handle common logic
+// Initialize Gemini (used for Vision Analysis)
 const getAi = () => {
-    const apiKey = process.env.API_KEY;
+    // Vite config implicitly replaces process.env.API_KEY with the value from .env.local
+    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("API_KEY environment variable is not set.");
+      throw new Error("GEMINI_API_KEY environment variable is not set in .env.local.");
     }
     return new GoogleGenAI({ apiKey });
 };
 
-// Helper to run the generation and extract the image
-async function generateImage(parts: any[]): Promise<string> {
+// Helper: Calls Hugging Face's API with the Free FLUX model
+async function generateImageFromPrompt(detailedPrompt: string): Promise<string> {
+    const hfToken = import.meta.env.VITE_HF_TOKEN;
+    if (!hfToken) {
+        throw new Error("Missing VITE_HF_TOKEN in .env.local file. Please add your Hugging Face proxy token back!");
+    }
+
+    console.log("Sending optimized prompt to Hugging Face FLUX.1-schnell: ", detailedPrompt);
+
+    let response;
+    try {
+        response = await fetch(
+            "/api/hf/models/black-forest-labs/FLUX.1-schnell",
+            {
+                headers: { 
+                    Authorization: `Bearer ${hfToken}`,
+                    "Content-Type": "application/json",
+                    "x-wait-for-model": "true", // Crucial for sleeping HF models
+                    "x-use-cache": "false"
+                },
+                method: "POST",
+                body: JSON.stringify({ 
+                    inputs: detailedPrompt,
+                    parameters: { num_inference_steps: 4 }
+                }),
+            }
+        );
+    } catch (networkErr: any) {
+        throw new Error(`HuggingFace Network Error (Check Adblocker/VPN): ${networkErr.message}`);
+    }
+
+    if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`FLUX Generation Failed (${response.status}): ${err}`);
+    }
+
+    // Convert binary image directly to base64 in the browser
+    const blob = await response.blob();
+    const arrayBuffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+}
+
+// Helper: Calls Gemini 2.5 Flash Vision to extract precise features
+async function analyzeWithGemini(systemPrompt: string, parts: any[]): Promise<string> {
     const ai = getAi();
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts },
-            config: {
-                responseModalities: [Modality.IMAGE],
-            },
+            model: 'gemini-2.5-flash',
+            contents: [{ parts: [{ text: systemPrompt }, ...parts] }]
         });
-        
-        for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData && part.inlineData.mimeType.startsWith('image/')) {
-                return part.inlineData.data;
-            }
-        }
-        
-        throw new Error("No image was generated in the response.");
-    } catch (error) {
-        console.error("Gemini API call failed:", error);
-        throw new Error("Failed to generate image. Please check your inputs and API key.");
+        return response.text || "A photorealistic fashion editorial photograph";
+    } catch (error: any) {
+        throw new Error(`Gemini Vision Analysis Failed: ${error.message}`);
     }
 }
 
-
-// Mode 1: FUSE with Unified Camera Perspective
-const fusePrompt = `Act as a professional photo compositor and retoucher. Your task is to create a single, photorealistic, and unified image by perfectly integrating the person from the 'Foreground Image' into the 'Background Image'. The final result must not look like a composite or collage.
-
-**Primary Directive: Unified Camera Perspective.**
-
-1.  **Analyze the Background:** First, analyze the 'Background Image' to determine its camera perspective, including the vanishing point, camera height, and lens angle.
-2.  **Reproject the Foreground:** Do not simply paste the model. Instead, re-render the person from the 'Foreground Image' as if they were captured by the *exact same camera* at the *exact same moment* as the background.
-3.  **Scale & Perspective Correction:** The model's scale and perspective must be perfectly aligned with the room's geometry. If the model is placed on the floor, their feet must align with the floor plane and their size must be proportional to the furniture.
-4.  **Unified Lighting & Shadows:** Analyze the direction, color, and softness of the light sources in the 'Background Image'. Re-light the model to match this environment precisely. The model must cast soft, realistic shadows onto the floor and surrounding objects, consistent with the scene's lighting.
-5.  **Color & Style Integration:** While maintaining the model's core fashion style, subtly shift the colors of their outfit to harmonize with the room's color palette. The goal is stylistic cohesion, not a complete color replacement.
-6.  **Maintain Pose:** Preserve the original pose of the model as closely as possible while ensuring it fits naturally within the scene.
-
-The final output should be a single, flawless photograph that looks like it was taken in one shot.`;
-
-
+// Mode 1: FUSE
 export async function fuseImages(foreground: ImageData, background: ImageData): Promise<string> {
   const foregroundPart = { inlineData: { data: foreground.base64.split(',')[1], mimeType: foreground.mimeType } };
   const backgroundPart = { inlineData: { data: background.base64.split(',')[1], mimeType: background.mimeType } };
-  const textPart = { text: fusePrompt };
   
-  return generateImage([textPart, foregroundPart, backgroundPart]);
+  const analysisPrompt = `You are a world-class prompt engineer for FLUX image models. Look at the FIRST image (a fashion outfit/model) and the SECOND image (a background/scene vibe). 
+  Write a hyper-detailed, exhaustive text-to-image prompt (max 100 words) describing a stunning, perfectly coherent scene. 
+  CRUCIAL: Precisely describe the EXACT clothing patterns, colors, fabrics, and shapes from the First Image, and place the model flawlessly into a room matching the EXACT lighting, color tone, archways, and mood from the Second Image. The result must be a true photorealistic masterpiece. ONLY output the raw image prompt.`;
+
+  const detailedPrompt = await analyzeWithGemini(analysisPrompt, [foregroundPart, backgroundPart]);
+  return generateImageFromPrompt(detailedPrompt);
 }
 
 // Mode 2: EXTEND SCENE
-const extendPrompt = `Act as a Cinematic Architectural Designer. Analyze the uploaded image, designated as the 'Vibe Donor'. Specifically extract its key aesthetic components: the soft pink/peach wall color, the striped rainbow light reflections, the glossy marble floor texture, and the neon-accented archways. Now, generate a completely new interior scene (a 'New View') that appears to be located just through the central archway or hallway of the Vibe Donor room. The New View must maintain the exact color palette, light quality, and visual temperature of the Vibe Donor image, ensuring perfect architectural continuity and style consistency.`;
-
 export async function extendScene(source: ImageData): Promise<string> {
     const sourcePart = { inlineData: { data: source.base64.split(',')[1], mimeType: source.mimeType } };
-    const textPart = { text: extendPrompt };
-    return generateImage([textPart, sourcePart]);
+    
+    const analysisPrompt = `You are a cinematic architectural designer. Analyze this room/scene. Write a hyper-detailed FLUX image generation prompt (max 80 words) describing a brand new room that exists directly connected to this one, sharing the exact same surreal aesthetic, specific neon light colors, floor reflections, and specific architectural styles. Output ONLY the raw image generation prompt.`;
+
+    const detailedPrompt = await analyzeWithGemini(analysisPrompt, [sourcePart]);
+    return generateImageFromPrompt(detailedPrompt);
 }
 
 // Mode 3: REMIX STYLE
-const remixPrompt = `Act as a High-Fashion Stylist and Visual Mixer. Your goal is to generate a new image of a model placed seamlessly into the 'Target Scene' background. The model must be entirely new, but their appearance (outfit, hair buns, and accessory style) must be generated by analyzing the attached 'Style Donor' image. The new model should be in a casual, relaxed pose (e.g., sitting on the floor or reclining on the sofa). Crucially: The model's elaborate, embroidered, and beaded clothing style must be retained, but their color palette must be remixed to exclusively match the primary colors of the rainbow yarn couch in the Target Scene.`;
-
 export async function remixStyle(styleDonor: ImageData, targetScene: ImageData): Promise<string> {
     const styleDonorPart = { inlineData: { data: styleDonor.base64.split(',')[1], mimeType: styleDonor.mimeType } };
     const targetScenePart = { inlineData: { data: targetScene.base64.split(',')[1], mimeType: targetScene.mimeType } };
-    const textPart = { text: remixPrompt };
     
-    return generateImage([textPart, styleDonorPart, targetScenePart]);
+    const analysisPrompt = `You are a High-Fashion Stylist. Look at the FIRST image (outfit and style details) and the SECOND image (a new room/scene). Write a hyper-detailed FLUX prompt (max 100 words) describing a fashion model wearing the EXACT same highly-detailed outfit/fabric/embroidery as the first image, but physically lounging/sitting naturally inside a room that perfectly matches the aesthetic of the second image. The lighting should seamlessly bounce off the model. Output ONLY the raw prompt.`;
+    
+    const detailedPrompt = await analyzeWithGemini(analysisPrompt, [styleDonorPart, targetScenePart]);
+    return generateImageFromPrompt(detailedPrompt);
 }

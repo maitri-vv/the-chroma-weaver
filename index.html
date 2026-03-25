@@ -5,22 +5,92 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>The Chroma Weaver</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+          tailwind.config = {
+            darkMode: "class",
+            theme: {
+              extend: {
+                colors: {
+                  "primary-fixed": "#ff709f",
+                  "tertiary-container": "#ffccbc",
+                  "on-secondary-fixed-variant": "#6a4e71",
+                  "on-secondary-container": "#604567",
+                  "primary-dim": "#971b4e",
+                  "surface-bright": "#fbf5f7",
+                  "on-primary-fixed": "#000000",
+                  "secondary-fixed-dim": "#e7c3ed",
+                  "on-tertiary": "#ffefeb",
+                  "tertiary-dim": "#6b473b",
+                  "error-dim": "#a70138",
+                  "on-background": "#302e30",
+                  "on-error-container": "#510017",
+                  "on-tertiary-fixed": "#503025",
+                  "on-secondary": "#ffedfe",
+                  "error": "#b41340",
+                  "outline-variant": "#b0acae",
+                  "tertiary-fixed-dim": "#f0beae",
+                  "primary-fixed-dim": "#f06292",
+                  "on-primary-container": "#4c0022",
+                  "error-container": "#f74b6d",
+                  "on-surface-variant": "#5e5b5c",
+                  "surface": "#fbf5f7",
+                  "surface-tint": "#a7295a",
+                  "surface-container-high": "#e7e1e4",
+                  "on-primary-fixed-variant": "#5d002b",
+                  "inverse-on-surface": "#a09c9e",
+                  "secondary-fixed": "#f5d1fb",
+                  "on-error": "#ffefef",
+                  "on-surface": "#302e30",
+                  "primary": "#a7295a",
+                  "on-tertiary-container": "#664237",
+                  "secondary": "#6e5275",
+                  "background": "#fbf5f7",
+                  "surface-container-lowest": "#ffffff",
+                  "inverse-primary": "#fd6c9c",
+                  "surface-dim": "#d9d3d6",
+                  "surface-container-highest": "#e1dbde",
+                  "primary-container": "#ff709f",
+                  "outline": "#797678",
+                  "secondary-container": "#f5d1fb",
+                  "surface-variant": "#e1dbde",
+                  "on-tertiary-fixed-variant": "#704b3f",
+                  "inverse-surface": "#0f0e0f",
+                  "on-primary": "#ffeff1",
+                  "surface-container": "#ece7e9",
+                  "tertiary": "#785246",
+                  "surface-container-low": "#f5eff1",
+                  "tertiary-fixed": "#ffccbc",
+                  "secondary-dim": "#614668",
+                  "on-secondary-fixed": "#4c3253"
+                },
+                fontFamily: {
+                  "headline": ["Noto Serif"],
+                  "body": ["Plus Jakarta Sans"],
+                  "label": ["Plus Jakarta Sans"]
+                },
+                borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+              },
+            },
+          }
+        </script>
     <style>
-      body {
-        background-color: #111827;
-      }
+            body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fbf5f7; }
+            .font-serif { font-family: 'Noto Serif', serif; }
+            .glass-nav { background: rgba(255, 249, 251, 0.8); backdrop-filter: blur(20px); }
+            .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+            .active-pill { background: linear-gradient(to right, #f5d1fb, #ffccbc); }
+            .btn-gradient { background: linear-gradient(135deg, #f5d1fb 0%, #ffccbc 50%, #ff709f 100%); }
+            .custom-shadow { box-shadow: 0 15px 40px rgba(167, 41, 90, 0.08); }
+            .pink-glow-shadow { box-shadow: 0 20px 40px rgba(248, 187, 208, 0.3); }
+            .glass-icon-btn { background: rgba(255, 255, 255, 0.25); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+            .no-scrollbar::-webkit-scrollbar { display: none; }
+            .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
-  }
-}
-</script>
+
 </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
