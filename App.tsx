@@ -219,7 +219,8 @@ const App: React.FC = () => {
 
       {/* Minimalism TopAppBar */}
       <header className="fixed top-0 w-full flex justify-between items-center px-6 lg:px-12 py-4 bg-white/70 backdrop-blur-2xl dark:bg-slate-900/70 z-40 shadow-sm h-16 border-b border-[#a7295a]/10">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <img src="/icon.svg" alt="Chroma Weaver Logo" className="w-7 h-7 lg:w-8 lg:h-8 drop-shadow-md hover:rotate-12 transition-transform duration-500" />
           <span className="text-xl lg:text-2xl font-serif italic font-bold text-[#302e30] dark:text-white bg-clip-text text-transparent bg-gradient-to-r from-[#a7295a] to-[#ff709f]">
             THE CHROMA WEAVER
           </span>
