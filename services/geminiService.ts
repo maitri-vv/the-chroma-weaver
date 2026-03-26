@@ -32,7 +32,7 @@ async function generateImageFromPrompt(detailedPrompt: string): Promise<string> 
     while (retries < 12) { // Allow up to 60 seconds of waiting for the model to wake up
         try {
             response = await fetch(
-                "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+                "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
                 {
                     headers: { 
                         "Authorization": `Bearer ${hfToken}`,
