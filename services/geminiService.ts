@@ -16,36 +16,58 @@ const getAi = () => {
 async function generateImageFromPrompt(detailedPrompt: string): Promise<string> {
     const hfToken = import.meta.env.VITE_HF_TOKEN;
     if (!hfToken) {
-        throw new Error("Missing VITE_HF_TOKEN in .env.local file. Please add your Hugging Face proxy token back!");
+        throw new Error("Missing VITE_HF_TOKEN in .env.local file.");
     }
 
     console.log("Sending optimized prompt to Hugging Face FLUX.1-schnell: ", detailedPrompt);
 
+    // Vercel's hobby tier kills proxy requests after exactly 10 seconds (Load Failed Network Error).
+    // To survive the 20+ second FLUX generation time, we MUST fetch directly from the client.
+    // However, Hugging Face rejects CORS if we use the "x-wait-for-model" custom header.
+    // Solution: Only use standard headers, and manually loop if the model returns a 503 Loading error!
+    
+    let retries = 0;
     let response;
-    try {
-        response = await fetch(
-            "/api/hf/models/black-forest-labs/FLUX.1-schnell",
-            {
-                headers: { 
-                    Authorization: `Bearer ${hfToken}`,
-                    "Content-Type": "application/json",
-                    "x-wait-for-model": "true", // Crucial for sleeping HF models
-                    "x-use-cache": "false"
-                },
-                method: "POST",
-                body: JSON.stringify({ 
-                    inputs: detailedPrompt,
-                    parameters: { num_inference_steps: 4 }
-                }),
-            }
-        );
-    } catch (networkErr: any) {
-        throw new Error(`HuggingFace Network Error (Check Adblocker/VPN): ${networkErr.message}`);
+
+    while (retries < 12) { // Allow up to 60 seconds of waiting for the model to wake up
+        try {
+            response = await fetch(
+                "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+                {
+                    headers: { 
+                        "Authorization": `Bearer ${hfToken}`,
+                        "Content-Type": "application/json"
+                    },
+                    method: "POST",
+                    body: JSON.stringify({ 
+                        inputs: detailedPrompt,
+                        parameters: { num_inference_steps: 4 }
+                    }),
+                }
+            );
+        } catch (networkErr: any) {
+            throw new Error(`HuggingFace Network Error (Check Adblocker/VPN): ${networkErr.message}`);
+        }
+
+        // If the 15GB FLUX model is currently asleep on Hugging Face servers, it returns 503.
+        if (response.status === 503) {
+            console.warn("FLUX Model is waking up. Waiting 5 seconds before retrying...");
+            await new Promise(r => setTimeout(r, 5000));
+            retries++;
+            continue;
+        }
+
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(`FLUX Generation Failed (${response.status}): ${err}`);
+        }
+
+        // Success! Break the loop.
+        break;
     }
 
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`FLUX Generation Failed (${response.status}): ${err}`);
+    if (!response || !response.ok) {
+        throw new Error("FLUX Model failed to wake up in time. Please try again.");
     }
 
     // Convert binary image directly to base64 in the browser
