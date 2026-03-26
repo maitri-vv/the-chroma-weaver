@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { GoogleGenAI } from "@google/genai";
+import { HfInference } from "@huggingface/inference";
 import type { ImageData } from '../types';
 
 // Initialize Gemini (used for Vision Analysis)
@@ -19,66 +20,27 @@ async function generateImageFromPrompt(detailedPrompt: string): Promise<string> 
         throw new Error("Missing VITE_HF_TOKEN in .env.local file.");
     }
 
-    console.log("Sending optimized prompt to Hugging Face FLUX.1-schnell: ", detailedPrompt);
+    console.log("Sending optimized prompt to Hugging Face SDK: ", detailedPrompt);
+    const hf = new HfInference(hfToken);
 
-    // Vercel's hobby tier kills proxy requests after exactly 10 seconds (Load Failed Network Error).
-    // To survive the 20+ second FLUX generation time, we MUST fetch directly from the client.
-    // However, Hugging Face rejects CORS if we use the "x-wait-for-model" custom header.
-    // Solution: Only use standard headers, and manually loop if the model returns a 503 Loading error!
-    
-    let retries = 0;
-    let response;
+    try {
+        const blob = await hf.textToImage({
+            model: "black-forest-labs/FLUX.1-schnell",
+            inputs: detailedPrompt,
+            parameters: { num_inference_steps: 4 }
+        });
 
-    while (retries < 12) { // Allow up to 60 seconds of waiting for the model to wake up
-        try {
-            response = await fetch(
-                "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
-                {
-                    headers: { 
-                        "Authorization": `Bearer ${hfToken}`,
-                        "Content-Type": "application/json"
-                    },
-                    method: "POST",
-                    body: JSON.stringify({ 
-                        inputs: detailedPrompt,
-                        parameters: { num_inference_steps: 4 }
-                    }),
-                }
-            );
-        } catch (networkErr: any) {
-            throw new Error(`HuggingFace Network Error (Check Adblocker/VPN): ${networkErr.message}`);
+        // Convert binary image directly to base64 in the browser
+        const arrayBuffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
         }
-
-        // If the 15GB FLUX model is currently asleep on Hugging Face servers, it returns 503.
-        if (response.status === 503) {
-            console.warn("FLUX Model is waking up. Waiting 5 seconds before retrying...");
-            await new Promise(r => setTimeout(r, 5000));
-            retries++;
-            continue;
-        }
-
-        if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`FLUX Generation Failed (${response.status}): ${err}`);
-        }
-
-        // Success! Break the loop.
-        break;
+        return window.btoa(binary);
+    } catch (error: any) {
+        throw new Error(`FLUX Generation SDK Failed: ${error.message}`);
     }
-
-    if (!response || !response.ok) {
-        throw new Error("FLUX Model failed to wake up in time. Please try again.");
-    }
-
-    // Convert binary image directly to base64 in the browser
-    const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return window.btoa(binary);
 }
 
 // Helper: Calls Gemini 2.5 Flash Vision to extract precise features
