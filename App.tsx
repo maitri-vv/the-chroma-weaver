@@ -317,6 +317,28 @@ const App: React.FC = () => {
               </span>
             )}
           </button>
+
+          {/* Product Hunt Embed */}
+          <a 
+            href="https://www.producthunt.com/products/the-chroma-weaver?embed=true&utm_source=embed&utm_medium=post_embed" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="w-full flex items-center gap-3 p-3 mt-4 border border-[#a7295a]/20 dark:border-white/10 rounded-2xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl shadow-sm hover:shadow-md hover:-translate-y-1 hover:shadow-[#ff6154]/20 hover:border-[#ff6154]/40 transition-all duration-300 group flex-shrink-0"
+          >
+            <img 
+              alt="The Chroma Weaver" 
+              src="https://ph-files.imgix.net/4030b98d-0b28-48db-adf8-f7df66162489.svg?auto=format&fit=crop&w=80&h=80" 
+              className="w-12 h-12 rounded-xl object-cover flex-shrink-0 group-hover:scale-105 transition-transform shadow-sm bg-white" 
+            />
+            <div className="flex-1 min-w-0 flex flex-col text-left">
+              <h3 className="font-bold text-[13px] text-[#302e30] dark:text-white truncate tracking-tight">The Chroma Weaver</h3>
+              <p className="text-[11px] text-[#5e5b5c] dark:text-slate-400 line-clamp-1 leading-snug">Turn any textile into an AI-generated immersive world</p>
+              <div className="text-[10px] font-black uppercase tracking-widest text-[#ff6154] mt-1.5 group-hover:text-[#ff3b2a] flex items-center gap-1 transition-colors">
+                Featured on Product Hunt 
+                <span className="material-symbols-outlined text-[12px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+              </div>
+            </div>
+          </a>
         </aside>
 
         {/* Right Panel (Generated Image filled container AND History Below) */}
